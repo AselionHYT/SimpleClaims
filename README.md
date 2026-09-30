@@ -1,3 +1,10 @@
+> **Aselion fork.** This is [AselionHYT](https://github.com/AselionHYT)'s fork of
+> [Buuz135/SimpleClaims](https://github.com/Buuz135/SimpleClaims) by Buuz135, used on the Aselion
+> Adventure server. The mod code is unchanged; the fork only builds it against the published Hytale
+> server API (`com.hypixel.hytale:Server`, version in `gradle.properties`) and publishes the jar as a
+> GitHub release. All credit goes to Buuz135; the original MIT licence in `LICENSE` applies.
+> Build: `./gradlew shadowJar` -> `build/libs/SimpleClaims-<version>.jar`.
+
 ![alt text](https://media.forgecdn.net/attachments/1432/146/simple_claims-png.png) ![code cat](https://media.forgecdn.net/attachments/1426/453/code_cat-png.png)
 
 [![](https://img.shields.io/twitter/follow/Buuz135mods?color=E04E14&labelColor=2D2D2D&style=for-the-badge)](https://twitter.com/Buuz135mods) [![](https://img.shields.io/badge/DONATE-KOFI-E04E14?labelColor=2D2D2D&style=for-the-badge)](https://ko-fi.com/buuz135) [![](https://img.shields.io/discord/357597633566605313?color=E04E14&labelColor=2D2D2D&label=JOIN-DISCORD&style=for-the-badge)](https://discord.gg/4tPfwjn)
