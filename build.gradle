@@ -64,7 +64,13 @@ hytaleServerJar = "$hytaleHome/install/$patchline/package/game/$game_build/Serve
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
-    implementation files(hytaleServerJar)
+    // Aselion fork: build against the published server API when hytale_server_version is set
+    // (gradle.properties), so the jar builds without a local Hytale launcher install.
+    if (project.hasProperty('hytale_server_version')) {
+        compileOnly "com.hypixel.hytale:Server:${hytale_server_version}"
+    } else {
+        implementation files(hytaleServerJar)
+    }
     //implementation(files(System.getProperty("user.home") + "/AppData/Roaming/Hytale/install/release/package/game/$game_build/Server/HytaleServer.jar"))
     //implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
     shadowBundle files('libs/codeclib-1.1.0.jar')
@@ -112,6 +118,9 @@ shadowJar {
     mergeServiceFiles()
     configurations = [project.configurations.shadowBundle]
     relocate 'dev.unnm3d.codeclib', 'com.buuz135.simpleclaims.libs.codeclib'
+    // Aselion fork: keep the bundled SLF4J private. Unrelocated, its ServiceLoader finds other mods'
+    // providers (e.g. Logback) and logs "SLF4JServiceProvider ... not a subtype" at boot.
+    relocate 'org.slf4j', 'com.buuz135.simpleclaims.libs.slf4j'
     manifest {
         attributes(
                 'Main-Class': 'com.buuz135.simpleclaims.Main'
