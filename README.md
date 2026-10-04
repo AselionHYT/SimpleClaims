@@ -1,9 +1,16 @@
 > **Aselion fork.** This is [AselionHYT](https://github.com/AselionHYT)'s fork of
 > [Buuz135/SimpleClaims](https://github.com/Buuz135/SimpleClaims) by Buuz135, used on the Aselion
-> Adventure server. The mod code is unchanged; the fork only builds it against the published Hytale
-> server API (`com.hypixel.hytale:Server`, version in `gradle.properties`) and publishes the jar as a
-> GitHub release. All credit goes to Buuz135; the original MIT licence in `LICENSE` applies.
+> Adventure server. The fork builds the mod against the published Hytale server API
+> (`com.hypixel.hytale:Server`, version in `gradle.properties`) and publishes the jar as a GitHub
+> release. All credit goes to Buuz135; the original MIT licence in `LICENSE` applies.
 > Build: `./gradlew shadowJar` -> `build/libs/SimpleClaims-<version>.jar`.
+>
+> **Branch `port/hytale-0.7`** carries Aselion's port to the Hytale 0.7 pre-release line (built against
+> `0.7.0-pre.5.1`, releases tagged `v<version>-pre0.7.<n>`); upstream had no 0.7 build on 2026-10-04.
+> 0.7 removed the block getters of `World`, `WorldChunk` and `BlockChunk`: block types and block
+> entities are read through the section (`util/WorldBlocks`, `BlockModule.getBlockEntity`), and the
+> claim map builder reads heights from `HeightmapColumn` and blocks, fluids and environments from the
+> column's sections. A 0.7 build does not load chunks on 0.6 and the other way round.
 
 ![alt text](https://media.forgecdn.net/attachments/1432/146/simple_claims-png.png) ![code cat](https://media.forgecdn.net/attachments/1426/453/code_cat-png.png)
 

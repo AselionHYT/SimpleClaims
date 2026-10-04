@@ -1,3 +1,9 @@
+# 1.0.39-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Ported to Hytale `0.7.0-pre.5.1`: block lookups (interact protection, bench chest search, crafting quantities) and
+  the claim world map builder use the section-based block access that replaced the `World`/`WorldChunk`/`BlockChunk`
+  getters. `ServerVersion` is `>=0.7.0-pre.5 <0.8.0`; this build does not run on 0.6.
+
 # 1.0.39
 
 * Ported to version 0.6.0
