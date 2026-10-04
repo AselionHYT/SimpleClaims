@@ -29,6 +29,10 @@ repositories {
         url = uri("https://maven.hytale.com/release")
     }
     maven {
+        name = "hytale-pre-release"
+        url = uri("https://maven.hytale.com/pre-release")
+    }
+    maven {
         name = "Jitpack"
         url = uri("https://jitpack.io")
     }
