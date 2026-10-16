@@ -45,7 +45,11 @@ public class ClaimManager {
     private HytaleLogger logger = HytaleLogger.getLogger().getSubLogger("SimpleClaims");
     private PlayerNameTracker playerNameTracker;
     private HashMap<String, PartyInfo> parties;
-    private HashMap<String, HashMap<String, ChunkInfo>> chunks;
+    // Read from every world thread without a lock. Copy-on-write: the outer map is never
+    // modified after it is published, a new dimension swaps in a new map (dimensionChunks).
+    // A plain HashMap that world threads insert into concurrently loses entries during a
+    // resize, which silently dropped every claim of a world from memory.
+    private volatile HashMap<String, HashMap<String, ChunkInfo>> chunks;
     private HashMap<String, HashMap<String, ReservedChunk>> reservedChunks;
     private Set<UUID> adminOverrides;
     private DatabaseManager databaseManager;
@@ -209,9 +213,19 @@ public class ClaimManager {
 
     @Nullable
     public ChunkInfo getChunk(String dimension, int chunkX, int chunkZ){
-        var chunkInfo = this.chunks.computeIfAbsent(dimension, k -> new HashMap<>());
-        var formattedChunk = ChunkInfo.formatCoordinates(chunkX, chunkZ);
-        return chunkInfo.getOrDefault(formattedChunk, null);
+        var chunkInfo = this.chunks.get(dimension);
+        if (chunkInfo == null) return null;
+        return chunkInfo.get(ChunkInfo.formatCoordinates(chunkX, chunkZ));
+    }
+
+    private synchronized HashMap<String, ChunkInfo> dimensionChunks(String dimension) {
+        var existing = this.chunks.get(dimension);
+        if (existing != null) return existing;
+        var created = new HashMap<String, ChunkInfo>();
+        var copy = new HashMap<>(this.chunks);
+        copy.put(dimension, created);
+        this.chunks = copy;
+        return created;
     }
 
     @Nullable
@@ -221,7 +235,7 @@ public class ClaimManager {
 
     public ChunkInfo claimChunkBy(String dimension, int chunkX, int chunkZ, PartyInfo partyInfo, Player owner, PlayerRef playerRef) {
         var chunkInfo = new ChunkInfo(partyInfo.getId(), chunkX, chunkZ);
-        var chunkDimension = this.chunks.computeIfAbsent(dimension, k -> new HashMap<>());
+        var chunkDimension = this.dimensionChunks(dimension);
         chunkDimension.put(ChunkInfo.formatCoordinates(chunkX, chunkZ), chunkInfo);
         chunkInfo.setCreatedTracked(new ModifiedTracking(playerRef.getUuid(), owner.getPlayerRef().getUsername(), LocalDateTime.now().toString()));
         partyClaimCounts.merge(partyInfo.getId(), 1, Integer::sum);
@@ -527,6 +541,10 @@ public class ClaimManager {
         } else {
             logger.at(Level.INFO).log("No parties needed migration");
         }
+    }
+
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
     }
 
     public void runAsync(Runnable runnable) {
