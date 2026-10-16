@@ -543,6 +543,10 @@ public class ClaimManager {
         }
     }
 
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
+    }
+
     public void runAsync(Runnable runnable) {
         this.executorService.submit(runnable);
     }

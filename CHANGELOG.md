@@ -1,3 +1,10 @@
+# 1.0.39-aselion.3-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Claim chunk loading (Aselion fork, off by default): `ChunkLoading.Enabled` keeps the claimed chunks of parties an
+  admin switched it on for ticking while nobody is near (`/sc chunkload on|off <party>`, `list`, `status`, `select`,
+  `select-clear`). Limits per party and per server; state in two new database tables, created only when enabled.
+  With the default config nothing is scheduled, registered in the database or written. See CONFIG.md.
+
 # 1.0.39-aselion.2-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
 
 * Fix: claims of a world could vanish from memory when a world thread looked up a new dimension (unsynchronized

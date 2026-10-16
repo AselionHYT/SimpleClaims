@@ -60,6 +60,43 @@ public class SimpleClaimsConfig {
     private String[] TamedEntityRoleIdentifiers = new String[]{"Tamed_"};
     private String[] BlocksThatIgnoreInteractRestrictions = new String[]{"gravestone"};
 
+    // Aselion fork: keeps claimed chunks of chosen parties ticking while nobody is near (see ChunkLoadManager).
+    // Off by default; when off the feature is inert: nothing is scheduled and nothing is written to the database.
+    private ChunkLoadingConfig ChunkLoading = new ChunkLoadingConfig();
+
+    public static class ChunkLoadingConfig {
+        private boolean Enabled = false;
+        private int MaxChunksPerParty = 9; // claimed chunks one party keeps ticking at most
+        private int MaxChunksTotal = 64; // chunks the whole server keeps ticking at most, over all parties
+        private boolean RequiresAdminApproval = true; // true: only admins switch it on for a party; false: party owners may too
+
+        public ChunkLoadingConfig() {
+        }
+
+        public ChunkLoadingConfig(boolean enabled, int maxChunksPerParty, int maxChunksTotal, boolean requiresAdminApproval) {
+            this.Enabled = enabled;
+            this.MaxChunksPerParty = maxChunksPerParty;
+            this.MaxChunksTotal = maxChunksTotal;
+            this.RequiresAdminApproval = requiresAdminApproval;
+        }
+
+        public boolean isEnabled() {
+            return Enabled;
+        }
+
+        public int getMaxChunksPerParty() {
+            return MaxChunksPerParty;
+        }
+
+        public int getMaxChunksTotal() {
+            return MaxChunksTotal;
+        }
+
+        public boolean isRequiresAdminApproval() {
+            return RequiresAdminApproval;
+        }
+    }
+
     public SimpleClaimsConfig() {
 
     }
@@ -270,5 +307,9 @@ public class SimpleClaimsConfig {
 
     public float getClaimUIMapResolutionScale() {
         return ClaimUIMapResolutionScale;
+    }
+
+    public ChunkLoadingConfig getChunkLoading() {
+        return ChunkLoading == null ? new ChunkLoadingConfig() : ChunkLoading;
     }
 }

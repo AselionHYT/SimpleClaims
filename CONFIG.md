@@ -117,6 +117,41 @@ Settings related to the user interface and visual feedback.
 - **NotifyPartyChatToggling** (Boolean, Default: `true`): If `true`, all party members will be notified when someone
   toggles their party chat.
 
+## Chunk Loading (Aselion fork)
+
+Keeps claimed chunks ticking while no player is near, so machines in a claim keep running while the owner is offline.
+Off by default. When off it is inert: no keep-alive loop runs, nothing is written to the database, and the
+`/sc chunkload` commands only answer that it is disabled. Startup logs `chunk loading: off` or `chunk loading: on (...)`.
+
+```json
+"ChunkLoading": {
+  "Enabled": false,
+  "MaxChunksPerParty": 9,
+  "MaxChunksTotal": 64,
+  "RequiresAdminApproval": true
+}
+```
+
+- **Enabled** (Boolean, Default: `false`): Turns the feature on for this server.
+- **MaxChunksPerParty** (Integer, Default: `9`): Claimed chunks one party keeps loaded at most.
+- **MaxChunksTotal** (Integer, Default: `64`): Chunks the server keeps loaded at most over all parties. Parties are
+  served in the order chunk loading was switched on for them.
+- **RequiresAdminApproval** (Boolean, Default: `true`): If `true`, only admins (`simpleclaims.admin.chunkload`) switch
+  it on or off for a party. If `false`, a party owner may switch it for their own party too.
+
+Commands (under `/simpleclaims`, alias `/sc`; need `simpleclaims.claim`, `list` needs `simpleclaims.admin.chunkload`):
+
+- `/sc chunkload on <party>` / `/sc chunkload off <party>`: `<party>` is `here` (the claim you stand in), `mine`, the
+  owner's name or the party id. Works from the console with a name or id.
+- `/sc chunkload list`: kept, ticking and capped chunks per party, the keep-up cost and the world's average tick.
+- `/sc chunkload status`: your own party.
+- `/sc chunkload select`: the party owner chooses the claimed chunk they stand in (toggle, up to `MaxChunksPerParty`).
+  With chunks chosen only those load; with none chosen the party's oldest claims load. `select-clear` forgets the choice.
+
+How: every 500 ms the active timer of each kept chunk column and of all its sections is reset (since Hytale 0.7.0 a
+column and each 32-block section tick separately), and unloaded chunks are loaded ticking. State is in the tables
+`chunk_loading_parties` and `chunk_loading_selection` of `SimpleClaims.db`, so it survives restarts and handoffs.
+
 ## Experimental Settings
 
 Use these with caution as they might still be in development.

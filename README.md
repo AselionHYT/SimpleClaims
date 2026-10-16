@@ -11,6 +11,10 @@
 > entities are read through the section (`util/WorldBlocks`, `BlockModule.getBlockEntity`), and the
 > claim map builder reads heights from `HeightmapColumn` and blocks, fluids and environments from the
 > column's sections. A 0.7 build does not load chunks on 0.6 and the other way round.
+>
+> **Claim chunk loading** (Aselion, since `1.0.39-aselion.3-pre0.7.1`): `ChunkLoading.Enabled` in the config keeps
+> the claimed chunks of chosen parties ticking with no player near (used on Rewired for Orbis Industries machines).
+> Off by default and then inert; one jar for all servers, only the server's config switches it on. See `CONFIG.md`.
 
 ![alt text](https://media.forgecdn.net/attachments/1432/146/simple_claims-png.png) ![code cat](https://media.forgecdn.net/attachments/1426/453/code_cat-png.png)
 
