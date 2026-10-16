@@ -1,3 +1,8 @@
+# 1.0.39-aselion.2-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Fix: claims of a world could vanish from memory when a world thread looked up a new dimension (unsynchronized
+  `HashMap` resize in `ClaimManager.getChunk`). The dimension map is now copy-on-write and `getChunk` only reads (#4).
+
 # 1.0.39-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
 
 * Ported to Hytale `0.7.0-pre.5.1`: block lookups (interact protection, bench chest search, crafting quantities) and
