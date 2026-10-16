@@ -38,6 +38,7 @@ public class SimpleClaimProtectCommand extends AbstractAsyncCommand {
         this.addSubCommand(new OpClaimChunkCommand());
         this.addSubCommand(new OpUnclaimChunkCommand());
         this.addSubCommand(new OpChunkGuiCommand());
+        this.addSubCommand(new com.buuz135.simpleclaims.commands.subcommand.chunkload.ChunkLoadCommand());
     }
 
     @NonNullDecl
