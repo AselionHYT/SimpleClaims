@@ -1,6 +1,7 @@
 package com.buuz135.simpleclaims.claim;
 
 import com.buuz135.simpleclaims.Main;
+import com.buuz135.simpleclaims.claim.budget.WorldClaimBudget;
 import com.buuz135.simpleclaims.claim.party.PartyInvite;
 import com.buuz135.simpleclaims.claim.party.PartyOverride;
 import com.buuz135.simpleclaims.claim.party.PartyOverrides;
@@ -41,6 +42,8 @@ public class ClaimManager {
     private final Map<UUID, PartyInvite> partyInvites;
     private final Map<UUID, UUID> playerToParty;
     private final Map<UUID, Integer> partyClaimCounts;
+    // Aselion fork: claims per party and dimension, for WorldClaimLimits (key: WorldClaimBudget.key)
+    private final Map<String, Integer> dimensionClaimCounts = new ConcurrentHashMap<>();
     private Set<String> worldsNeedingUpdates;
     private HytaleLogger logger = HytaleLogger.getLogger().getSubLogger("SimpleClaims");
     private PlayerNameTracker playerNameTracker;
@@ -117,6 +120,8 @@ public class ClaimManager {
                 partyClaimCounts.merge(chunk.getPartyOwner(), 1, Integer::sum);
             }
         }
+        this.chunks.forEach((dimension, dimensionChunks) -> dimensionChunks.values().forEach(chunk ->
+                dimensionClaimCounts.merge(WorldClaimBudget.key(chunk.getPartyOwner(), dimension), 1, Integer::sum)));
 
         logger.at(Level.INFO).log("Loading name cache data from DB...");
         PlayerNameTracker tracker = this.databaseManager.loadNameCache();
@@ -239,6 +244,7 @@ public class ClaimManager {
         chunkDimension.put(ChunkInfo.formatCoordinates(chunkX, chunkZ), chunkInfo);
         chunkInfo.setCreatedTracked(new ModifiedTracking(playerRef.getUuid(), owner.getPlayerRef().getUsername(), LocalDateTime.now().toString()));
         partyClaimCounts.merge(partyInfo.getId(), 1, Integer::sum);
+        dimensionClaimCounts.merge(WorldClaimBudget.key(partyInfo.getId(), dimension), 1, Integer::sum);
         
         // Remove this chunk from reserved chunks if it was reserved by this party
         if (Main.CONFIG.get().isEnablePerimeterReservation()) {
@@ -266,14 +272,32 @@ public class ClaimManager {
         return this.claimChunkBy(dimension, ChunkUtil.chunkCoordinate(blockX), ChunkUtil.chunkCoordinate(blockZ), partyInfo, owner, playerRef);
     }
 
+    /** Whether the party may claim one more chunk outside the worlds listed in WorldClaimLimits. */
     public boolean hasEnoughClaimsLeft(PartyInfo partyInfo) {
-        int maxAmount = partyInfo.getMaxClaimAmount();
-        int currentAmount = partyClaimCounts.getOrDefault(partyInfo.getId(), 0);
-        return currentAmount < maxAmount;
+        return hasEnoughClaimsLeft(partyInfo, null);
     }
 
+    /** Whether the party may claim one more chunk in {@code dimension} (its WorldClaimLimits budget if listed). */
+    public boolean hasEnoughClaimsLeft(PartyInfo partyInfo, String dimension) {
+        return getAmountOfClaims(partyInfo, dimension) < getMaxClaimAmount(partyInfo, dimension);
+    }
+
+    /** Claims counted against the party's normal budget (claims in WorldClaimLimits worlds excluded). */
     public int getAmountOfClaims(PartyInfo partyInfo) {
-        return partyClaimCounts.getOrDefault(partyInfo.getId(), 0);
+        return getAmountOfClaims(partyInfo, null);
+    }
+
+    /** Claims counted against the budget of {@code dimension}. */
+    public int getAmountOfClaims(PartyInfo partyInfo, String dimension) {
+        int total = partyClaimCounts.getOrDefault(partyInfo.getId(), 0);
+        var limits = Main.CONFIG.get().getWorldClaimLimits();
+        if (limits.isEmpty()) return total;
+        return WorldClaimBudget.used(dimensionClaimCounts, partyInfo.getId(), dimension, limits, total);
+    }
+
+    /** The budget of {@code dimension}: its fixed WorldClaimLimits entry, else the party's normal budget. */
+    public int getMaxClaimAmount(PartyInfo partyInfo, String dimension) {
+        return WorldClaimBudget.max(dimension, Main.CONFIG.get().getWorldClaimLimits(), partyInfo.getMaxClaimAmount());
     }
 
     public void unclaim(String dimension, int chunkX, int chunkZ) {
@@ -283,6 +307,7 @@ public class ClaimManager {
             if (removed != null) {
                 UUID partyId = removed.getPartyOwner();
                 partyClaimCounts.computeIfPresent(partyId, (k, v) -> v > 1 ? v - 1 : null);
+                dimensionClaimCounts.computeIfPresent(WorldClaimBudget.key(partyId, dimension), (k, v) -> v > 1 ? v - 1 : null);
                 this.runAsync(() -> databaseManager.deleteClaim(dimension, chunkX, chunkZ));
                 
                 // Recalculate reserved perimeter after unclaiming if enabled
@@ -400,6 +425,7 @@ public class ClaimManager {
         });
         
         partyClaimCounts.remove(partyInfo.getId());
+        dimensionClaimCounts.keySet().removeIf(k -> k.startsWith(partyInfo.getId() + "|"));
 
         this.parties.remove(partyInfo.getId().toString());
         this.runAsync(() -> databaseManager.deleteParty(partyInfo.getId()));

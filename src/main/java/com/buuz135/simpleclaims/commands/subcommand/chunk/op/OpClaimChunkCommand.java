@@ -55,7 +55,7 @@ public class OpClaimChunkCommand extends AbstractAsyncCommand {
                         return;
                     }
 
-                    if (!ClaimManager.getInstance().hasEnoughClaimsLeft(party)) {
+                    if (!ClaimManager.getInstance().hasEnoughClaimsLeft(party, player.getWorld().getName())) {
                         playerRef.sendMessage(CommandMessages.NOT_ENOUGH_CHUNKS);
                         return;
                     }

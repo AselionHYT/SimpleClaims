@@ -41,6 +41,9 @@ public class SimpleClaimsConfig {
 
     private String[] ClaimCommandAliases = new String[]{"sc", "sc-chunks", "scc", "chunk", "chunks", "claim", "claims"};
     private String[] WorldNameBlacklistForClaiming = new String[0];
+    // Aselion fork: worlds with a fixed claim budget per party, e.g. {"farm": 4}. Claims there do not count against
+    // the normal budget and the budget does not grow with play time (see WorldClaimBudget). Empty = one budget.
+    private java.util.Map<String, Integer> WorldClaimLimits = new java.util.LinkedHashMap<>();
     private String TitleTopClaimTitleText = "Simple Claims";
     private String WildernessName = "Wilderness";
     private String[] FullWorldProtection = new String[0];
@@ -69,6 +72,7 @@ public class SimpleClaimsConfig {
         private int MaxChunksPerParty = 9; // claimed chunks one party keeps ticking at most
         private int MaxChunksTotal = 64; // chunks the whole server keeps ticking at most, over all parties
         private boolean RequiresAdminApproval = true; // true: only admins switch it on for a party; false: party owners may too
+        private String[] ExcludedWorlds = new String[0]; // claims in these worlds are never kept loaded
 
         public ChunkLoadingConfig() {
         }
@@ -94,6 +98,14 @@ public class SimpleClaimsConfig {
 
         public boolean isRequiresAdminApproval() {
             return RequiresAdminApproval;
+        }
+
+        public String[] getExcludedWorlds() {
+            return ExcludedWorlds == null ? new String[0] : ExcludedWorlds;
+        }
+
+        public boolean isExcludedWorld(String dimension) {
+            return dimension != null && java.util.Arrays.asList(getExcludedWorlds()).contains(dimension);
         }
     }
 
@@ -155,6 +167,10 @@ public class SimpleClaimsConfig {
 
     public String[] getClaimCommandAliases() {
         return ClaimCommandAliases;
+    }
+
+    public java.util.Map<String, Integer> getWorldClaimLimits() {
+        return WorldClaimLimits == null ? java.util.Map.of() : WorldClaimLimits;
     }
 
     public String[] getWorldNameBlacklistForClaiming() {

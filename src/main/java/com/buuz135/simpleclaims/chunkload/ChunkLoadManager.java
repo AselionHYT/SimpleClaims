@@ -202,7 +202,7 @@ public final class ChunkLoadManager {
         candidates.keySet().removeIf(dimension -> !claims.containsKey(dimension));
         for (var dimension : claims.keySet()) {
             var world = world(dimension);
-            if (world == null) {
+            if (world == null || config.isExcludedWorld(dimension)) {
                 candidates.remove(dimension);
                 continue;
             }
