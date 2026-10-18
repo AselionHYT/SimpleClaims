@@ -84,6 +84,11 @@ These settings define the aliases for the main commands of the mod.
 Global settings that affect claiming and protection across the server.
 
 - **WorldNameBlacklistForClaiming** (String Array, Default: `[]`): A list of world names where claiming chunks is disabled.
+- **WorldClaimLimits** (Object, Default: `{}`, Aselion fork): Worlds with a fixed claim budget per party, e.g.
+  `{"farm": 4}`. Claims in a listed world count only against that number, not against the party's normal budget, and
+  the number does not grow with `ClaimChunkGainInMinutes`, bonus chunks or member count. Claims in other worlds ignore
+  claims in listed worlds. The claim map shows the count and budget of the world it is opened in. A negative value
+  allows no claims. Empty keeps one budget for all worlds.
 - **FullWorldProtection** (String Array, Default: `[]`): A list of world names where the entire world is protected as if
   it were claimed.
 - **TitleTopClaimTitleText** (String, Default: `"Simple Claims"`): The text displayed at the top of the claim UI.
@@ -128,7 +133,8 @@ Off by default. When off it is inert: no keep-alive loop runs, nothing is writte
   "Enabled": false,
   "MaxChunksPerParty": 9,
   "MaxChunksTotal": 64,
-  "RequiresAdminApproval": true
+  "RequiresAdminApproval": true,
+  "ExcludedWorlds": []
 }
 ```
 
@@ -138,6 +144,8 @@ Off by default. When off it is inert: no keep-alive loop runs, nothing is writte
   served in the order chunk loading was switched on for them.
 - **RequiresAdminApproval** (Boolean, Default: `true`): If `true`, only admins (`simpleclaims.admin.chunkload`) switch
   it on or off for a party. If `false`, a party owner may switch it for their own party too.
+- **ExcludedWorlds** (String Array, Default: `[]`): Worlds whose claims are never kept loaded, e.g. `["farm"]`. Chunks
+  chosen there with `select` are ignored.
 
 Commands (under `/simpleclaims`, alias `/sc`; need `simpleclaims.claim`, `list` needs `simpleclaims.admin.chunkload`):
 

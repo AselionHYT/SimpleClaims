@@ -1,3 +1,10 @@
+# 1.0.39-aselion.4-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Per-world claim budgets (Aselion fork): `WorldClaimLimits`, e.g. `{"farm": 4}`, gives a listed world a fixed budget
+  per party that does not count against the normal budget and does not grow with play time. Claims are counted per
+  party and world in memory; the claim map shows the budget of its world. Empty by default (one budget, as before).
+* `ChunkLoading.ExcludedWorlds`: claims in these worlds are never kept loaded. See CONFIG.md.
+
 # 1.0.39-aselion.3-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
 
 * Claim chunk loading (Aselion fork, off by default): `ChunkLoading.Enabled` keeps the claimed chunks of parties an
