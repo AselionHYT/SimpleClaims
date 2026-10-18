@@ -29,6 +29,10 @@ repositories {
         url = uri("https://maven.hytale.com/release")
     }
     maven {
+        name = "hytale-pre-release"
+        url = uri("https://maven.hytale.com/pre-release")
+    }
+    maven {
         name = "Jitpack"
         url = uri("https://jitpack.io")
     }
@@ -64,10 +68,12 @@ hytaleServerJar = "$hytaleHome/install/$patchline/package/game/$game_build/Serve
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // Aselion fork: build against the published server API when hytale_server_version is set
     // (gradle.properties), so the jar builds without a local Hytale launcher install.
     if (project.hasProperty('hytale_server_version')) {
         compileOnly "com.hypixel.hytale:Server:${hytale_server_version}"
+        testImplementation "com.hypixel.hytale:Server:${hytale_server_version}"
     } else {
         implementation files(hytaleServerJar)
     }

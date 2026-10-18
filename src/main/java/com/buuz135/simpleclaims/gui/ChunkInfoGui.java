@@ -75,7 +75,7 @@ public class ChunkInfoGui extends InteractiveCustomUIPage<ChunkInfoGui.ChunkInfo
                     var chunk = ClaimManager.getInstance().getChunk(dimension, x, z);
                     var selectedParty = ClaimManager.getInstance().getPartyById(selectedPartyID);
 
-                    if ((chunk == null || ClaimManager.getInstance().getPartyById(chunk.getPartyOwner()) == null) && selectedParty != null && ClaimManager.getInstance().hasEnoughClaimsLeft(selectedParty)) {
+                    if ((chunk == null || ClaimManager.getInstance().getPartyById(chunk.getPartyOwner()) == null) && selectedParty != null && ClaimManager.getInstance().hasEnoughClaimsLeft(selectedParty, dimension)) {
                         var chunkInfo = ClaimManager.getInstance().claimChunkBy(dimension, x, z, selectedParty, playerInstance, playerRef);
                         ClaimManager.getInstance().queueMapUpdate(playerInstance.getWorld(), x, z);
                     }
@@ -111,7 +111,7 @@ public class ChunkInfoGui extends InteractiveCustomUIPage<ChunkInfoGui.ChunkInfo
                             }
                         }
                         
-                        if (ClaimManager.getInstance().hasEnoughClaimsLeft(playerParty)) {
+                        if (ClaimManager.getInstance().hasEnoughClaimsLeft(playerParty, dimension)) {
                             var chunkInfo = ClaimManager.getInstance().claimChunkBy(dimension, x, z, playerParty, playerInstance, playerRef);
                             ClaimManager.getInstance().queueMapUpdate(playerInstance.getWorld(), x, z);
                         }
@@ -168,8 +168,8 @@ public class ChunkInfoGui extends InteractiveCustomUIPage<ChunkInfoGui.ChunkInfo
             canPlayerClaim = true;
         }
 
-        uiCommandBuilder.set("#ClaimedChunksInfo #ClaimedChunksCount.Text", " " + ClaimManager.getInstance().getAmountOfClaims(playerParty) + "");
-        uiCommandBuilder.set("#ClaimedChunksInfo #MaxChunksCount.Text", playerParty.getMaxClaimAmount() + "");
+        uiCommandBuilder.set("#ClaimedChunksInfo #ClaimedChunksCount.Text", " " + ClaimManager.getInstance().getAmountOfClaims(playerParty, dimension) + "");
+        uiCommandBuilder.set("#ClaimedChunksInfo #MaxChunksCount.Text", ClaimManager.getInstance().getMaxClaimAmount(playerParty, dimension) + "");
 
         if (this.mapAsset == null && Main.CONFIG.get().isRenderMapInClaimUI()) {
             ChunkInfoMapAsset.sendToPlayer(this.playerRef.getPacketHandler(), ChunkInfoMapAsset.empty());

@@ -84,6 +84,11 @@ These settings define the aliases for the main commands of the mod.
 Global settings that affect claiming and protection across the server.
 
 - **WorldNameBlacklistForClaiming** (String Array, Default: `[]`): A list of world names where claiming chunks is disabled.
+- **WorldClaimLimits** (Object, Default: `{}`, Aselion fork): Worlds with a fixed claim budget per party, e.g.
+  `{"farm": 4}`. Claims in a listed world count only against that number, not against the party's normal budget, and
+  the number does not grow with `ClaimChunkGainInMinutes`, bonus chunks or member count. Claims in other worlds ignore
+  claims in listed worlds. The claim map shows the count and budget of the world it is opened in. A negative value
+  allows no claims. Empty keeps one budget for all worlds.
 - **FullWorldProtection** (String Array, Default: `[]`): A list of world names where the entire world is protected as if
   it were claimed.
 - **TitleTopClaimTitleText** (String, Default: `"Simple Claims"`): The text displayed at the top of the claim UI.
@@ -116,6 +121,44 @@ Settings related to the user interface and visual feedback.
   the world map.
 - **NotifyPartyChatToggling** (Boolean, Default: `true`): If `true`, all party members will be notified when someone
   toggles their party chat.
+
+## Chunk Loading (Aselion fork)
+
+Keeps claimed chunks ticking while no player is near, so machines in a claim keep running while the owner is offline.
+Off by default. When off it is inert: no keep-alive loop runs, nothing is written to the database, and the
+`/sc chunkload` commands only answer that it is disabled. Startup logs `chunk loading: off` or `chunk loading: on (...)`.
+
+```json
+"ChunkLoading": {
+  "Enabled": false,
+  "MaxChunksPerParty": 9,
+  "MaxChunksTotal": 64,
+  "RequiresAdminApproval": true,
+  "ExcludedWorlds": []
+}
+```
+
+- **Enabled** (Boolean, Default: `false`): Turns the feature on for this server.
+- **MaxChunksPerParty** (Integer, Default: `9`): Claimed chunks one party keeps loaded at most.
+- **MaxChunksTotal** (Integer, Default: `64`): Chunks the server keeps loaded at most over all parties. Parties are
+  served in the order chunk loading was switched on for them.
+- **RequiresAdminApproval** (Boolean, Default: `true`): If `true`, only admins (`simpleclaims.admin.chunkload`) switch
+  it on or off for a party. If `false`, a party owner may switch it for their own party too.
+- **ExcludedWorlds** (String Array, Default: `[]`): Worlds whose claims are never kept loaded, e.g. `["farm"]`. Chunks
+  chosen there with `select` are ignored.
+
+Commands (under `/simpleclaims`, alias `/sc`; need `simpleclaims.claim`, `list` needs `simpleclaims.admin.chunkload`):
+
+- `/sc chunkload on <party>` / `/sc chunkload off <party>`: `<party>` is `here` (the claim you stand in), `mine`, the
+  owner's name or the party id. Works from the console with a name or id.
+- `/sc chunkload list`: kept, ticking and capped chunks per party, the keep-up cost and the world's average tick.
+- `/sc chunkload status`: your own party.
+- `/sc chunkload select`: the party owner chooses the claimed chunk they stand in (toggle, up to `MaxChunksPerParty`).
+  With chunks chosen only those load; with none chosen the party's oldest claims load. `select-clear` forgets the choice.
+
+How: every 500 ms the active timer of each kept chunk column and of all its sections is reset (since Hytale 0.7.0 a
+column and each 32-block section tick separately), and unloaded chunks are loaded ticking. State is in the tables
+`chunk_loading_parties` and `chunk_loading_selection` of `SimpleClaims.db`, so it survives restarts and handoffs.
 
 ## Experimental Settings
 

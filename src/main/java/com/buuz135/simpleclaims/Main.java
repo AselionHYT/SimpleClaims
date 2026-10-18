@@ -1,6 +1,8 @@
 package com.buuz135.simpleclaims;
 
 import com.buuz135.simpleclaims.chat.PlayerChatListener;
+import com.buuz135.simpleclaims.chunkload.ChunkLoadManager;
+import com.buuz135.simpleclaims.chunkload.DatabaseChunkLoadStore;
 import com.buuz135.simpleclaims.claim.ClaimManager;
 import com.buuz135.simpleclaims.commands.SimpleClaimProtectCommand;
 import com.buuz135.simpleclaims.commands.SimpleClaimsPartyCommand;
@@ -13,6 +15,7 @@ import com.buuz135.simpleclaims.systems.tick.*;
 import com.buuz135.simpleclaims.util.PartyInactivityThread;
 import com.buuz135.simpleclaims.util.WindowExtraResourcesState;
 import com.buuz135.simpleclaims.util.WindowPacketAdapters;
+import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.event.events.player.AddPlayerToWorldEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent;
@@ -29,6 +32,7 @@ import dev.unnm3d.codeclib.config.CodecFactory;
 import io.netty.channel.Channel;
 import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 
@@ -120,6 +124,14 @@ public class Main extends JavaPlugin {
 
         partyInactivityTickingSystem = new PartyInactivityThread();
         partyInactivityTickingSystem.start();
+
+        // Aselion fork: claim chunk loading, inert unless ChunkLoading.Enabled is set (logs "chunk loading: off|on").
+        ChunkLoadManager.start(CONFIG.get().getChunkLoading(), new DatabaseChunkLoadStore(ClaimManager.getInstance()),
+                (task, periodMillis) -> {
+                    var future = HytaleServer.SCHEDULED_EXECUTOR.scheduleAtFixedRate(task, periodMillis, periodMillis, TimeUnit.MILLISECONDS);
+                    return () -> future.cancel(false);
+                },
+                line -> this.getLogger().at(Level.INFO).log(line));
     }
 
     @Override
@@ -130,6 +142,7 @@ public class Main extends JavaPlugin {
     @Override
     protected void shutdown() {
         super.shutdown();
+        ChunkLoadManager.stop();
         WindowPacketAdapters.uninstall();
     }
 
