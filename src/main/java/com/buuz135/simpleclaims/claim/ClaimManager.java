@@ -239,10 +239,19 @@ public class ClaimManager {
     }
 
     public ChunkInfo claimChunkBy(String dimension, int chunkX, int chunkZ, PartyInfo partyInfo, Player owner, PlayerRef playerRef) {
+        return this.claimChunkAs(dimension, chunkX, chunkZ, partyInfo, playerRef.getUuid(), owner.getPlayerRef().getUsername());
+    }
+
+    /**
+     * Aselion fork: claims a chunk for a party without a player at hand, for another plugin (an admin claim it makes
+     * on its own). No checks: the caller makes sure the chunk is free. {@code actorId} and {@code actorName} go into
+     * the claim's creation record.
+     */
+    public ChunkInfo claimChunkAs(String dimension, int chunkX, int chunkZ, PartyInfo partyInfo, UUID actorId, String actorName) {
         var chunkInfo = new ChunkInfo(partyInfo.getId(), chunkX, chunkZ);
         var chunkDimension = this.dimensionChunks(dimension);
         chunkDimension.put(ChunkInfo.formatCoordinates(chunkX, chunkZ), chunkInfo);
-        chunkInfo.setCreatedTracked(new ModifiedTracking(playerRef.getUuid(), owner.getPlayerRef().getUsername(), LocalDateTime.now().toString()));
+        chunkInfo.setCreatedTracked(new ModifiedTracking(actorId, actorName, LocalDateTime.now().toString()));
         partyClaimCounts.merge(partyInfo.getId(), 1, Integer::sum);
         dimensionClaimCounts.merge(WorldClaimBudget.key(partyInfo.getId(), dimension), 1, Integer::sum);
         

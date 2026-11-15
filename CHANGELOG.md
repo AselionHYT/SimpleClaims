@@ -1,3 +1,9 @@
+# 1.0.39-aselion.5-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* `ClaimManager.claimChunkAs(dimension, chunkX, chunkZ, party, actorId, actorName)` (Aselion fork): claims a chunk for
+  a party without a player at hand, so another plugin can make admin claims (Rewired's farm spawn claim, ASL-752).
+  `claimChunkBy` now delegates to it; behaviour unchanged.
+
 # 1.0.39-aselion.4-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
 
 * Per-world claim budgets (Aselion fork): `WorldClaimLimits`, e.g. `{"farm": 4}`, gives a listed world a fixed budget
