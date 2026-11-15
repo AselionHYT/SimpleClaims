@@ -288,7 +288,12 @@ public class ClaimManager {
 
     /** Whether the party may claim one more chunk in {@code dimension} (its WorldClaimLimits budget if listed). */
     public boolean hasEnoughClaimsLeft(PartyInfo partyInfo, String dimension) {
-        return getAmountOfClaims(partyInfo, dimension) < getMaxClaimAmount(partyInfo, dimension);
+        return hasEnoughClaimsLeft(partyInfo, dimension, false);
+    }
+
+    /** As {@link #hasEnoughClaimsLeft(PartyInfo, String)}; an admin claim ignores every budget (Aselion fork). */
+    public boolean hasEnoughClaimsLeft(PartyInfo partyInfo, String dimension, boolean adminClaim) {
+        return WorldClaimBudget.allows(adminClaim, getAmountOfClaims(partyInfo, dimension), getMaxClaimAmount(partyInfo, dimension));
     }
 
     /** Claims counted against the party's normal budget (claims in WorldClaimLimits worlds excluded). */

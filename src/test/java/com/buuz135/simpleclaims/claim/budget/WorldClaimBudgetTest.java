@@ -7,7 +7,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorldClaimBudgetTest {
 
@@ -51,5 +53,16 @@ class WorldClaimBudgetTest {
     @Test
     void negativeLimitMeansNoClaims() {
         assertEquals(0, WorldClaimBudget.max("farm", Map.of("farm", -1), 30));
+    }
+
+    @Test
+    void adminClaimsIgnoreTheBudgetPlayerClaimsKeepIt() {
+        int farmUsed = WorldClaimBudget.used(counts(0, 4), PARTY, "farm", FARM_FOUR, 4);
+        int farmMax = WorldClaimBudget.max("farm", FARM_FOUR, 30);
+        assertFalse(WorldClaimBudget.allows(false, farmUsed, farmMax), "a player party at 4 of 4 farm claims");
+        assertTrue(WorldClaimBudget.allows(false, 3, farmMax), "a player party with farm claims left");
+        assertTrue(WorldClaimBudget.allows(true, farmUsed, farmMax), "an admin claim beyond the farm budget");
+        assertTrue(WorldClaimBudget.allows(true, 40, 30), "an admin claim beyond the normal budget");
+        assertTrue(WorldClaimBudget.allows(true, 0, 0), "an admin claim in a world with budget 0");
     }
 }

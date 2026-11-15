@@ -43,6 +43,14 @@ public final class WorldClaimBudget {
         return Math.max(0, shared);
     }
 
+    /**
+     * Whether one more claim fits: an admin claim (admin-claim, the admin chunk map, another plugin's admin claim)
+     * always does, as no budget applies to it; a player claim only while {@code used} is below {@code max}.
+     */
+    public static boolean allows(boolean adminClaim, int used, int max) {
+        return adminClaim || used < max;
+    }
+
     /** The budget of {@code dimension}: its fixed limit if listed, else {@code partyMax}. */
     public static int max(String dimension, Map<String, Integer> worldLimits, int partyMax) {
         Integer limit = limitFor(dimension, worldLimits);
