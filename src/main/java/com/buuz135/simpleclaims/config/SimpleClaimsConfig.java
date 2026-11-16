@@ -1,5 +1,6 @@
 package com.buuz135.simpleclaims.config;
 
+import java.util.Arrays;
 
 public class SimpleClaimsConfig {
 
@@ -63,41 +64,40 @@ public class SimpleClaimsConfig {
     private String[] TamedEntityRoleIdentifiers = new String[]{"Tamed_"};
     private String[] BlocksThatIgnoreInteractRestrictions = new String[]{"gravestone"};
 
-    // Aselion fork: keeps claimed chunks of chosen parties ticking while nobody is near (see ChunkLoadManager).
+    // Aselion fork: keeps the claimed chunks of active parties ticking while nobody is near (see ChunkLoadManager).
     // Off by default; when off the feature is inert: nothing is scheduled and nothing is written to the database.
     private ChunkLoadingConfig ChunkLoading = new ChunkLoadingConfig();
 
     public static class ChunkLoadingConfig {
         private boolean Enabled = false;
-        private int MaxChunksPerParty = 9; // claimed chunks one party keeps ticking at most
-        private int MaxChunksTotal = 64; // chunks the whole server keeps ticking at most, over all parties
-        private boolean RequiresAdminApproval = true; // true: only admins switch it on for a party; false: party owners may too
+        private int ActiveHours = 48; // a party's claims stay loaded while a member was online within this many hours
+        private int WarnAboveLoadedChunks = 500; // logs a WARN while more claimed chunks than this are kept loaded
         private String[] ExcludedWorlds = new String[0]; // claims in these worlds are never kept loaded
 
         public ChunkLoadingConfig() {
         }
 
-        public ChunkLoadingConfig(boolean enabled, int maxChunksPerParty, int maxChunksTotal, boolean requiresAdminApproval) {
+        public ChunkLoadingConfig(boolean enabled, int activeHours, int warnAboveLoadedChunks, String... excludedWorlds) {
             this.Enabled = enabled;
-            this.MaxChunksPerParty = maxChunksPerParty;
-            this.MaxChunksTotal = maxChunksTotal;
-            this.RequiresAdminApproval = requiresAdminApproval;
+            this.ActiveHours = activeHours;
+            this.WarnAboveLoadedChunks = warnAboveLoadedChunks;
+            this.ExcludedWorlds = excludedWorlds;
         }
 
         public boolean isEnabled() {
             return Enabled;
         }
 
-        public int getMaxChunksPerParty() {
-            return MaxChunksPerParty;
+        public int getActiveHours() {
+            return ActiveHours;
         }
 
-        public int getMaxChunksTotal() {
-            return MaxChunksTotal;
+        public long getActiveMillis() {
+            return Math.max(0, ActiveHours) * 3_600_000L;
         }
 
-        public boolean isRequiresAdminApproval() {
-            return RequiresAdminApproval;
+        public int getWarnAboveLoadedChunks() {
+            return WarnAboveLoadedChunks;
         }
 
         public String[] getExcludedWorlds() {
@@ -105,7 +105,7 @@ public class SimpleClaimsConfig {
         }
 
         public boolean isExcludedWorld(String dimension) {
-            return dimension != null && java.util.Arrays.asList(getExcludedWorlds()).contains(dimension);
+            return dimension != null && Arrays.asList(getExcludedWorlds()).contains(dimension);
         }
     }
 

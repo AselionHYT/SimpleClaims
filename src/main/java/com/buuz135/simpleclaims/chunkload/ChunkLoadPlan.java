@@ -1,74 +1,50 @@
 package com.buuz135.simpleclaims.chunkload;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.ToLongFunction;
 
 /**
- * Decides which claimed chunks are kept loaded. Pure: no engine calls, so it is tested on its own.
+ * The activity rule of claim chunk loading. Pure: no engine calls, so it is tested on its own.
  *
- * <p>Parties are served in the order chunk loading was switched on for them (first come, first served under the
- * server-wide cap). A party that chose chunks gets only those; otherwise its oldest claims come first.
+ * <p>Every claimed chunk of a party stays loaded while at least one member was online within the configured window
+ * (default 48 hours). There is no per-party or server-wide budget: the claim limits per world are the budget.
  */
 public final class ChunkLoadPlan {
 
-    /** A claimed chunk of a party that has chunk loading switched on. */
-    public record Candidate(UUID partyId, String dimension, int chunkX, int chunkZ, String claimedDate) {
-        public String id() {
-            return chunkId(dimension, chunkX, chunkZ);
-        }
-    }
-
-    /** What one party gets: the chunks kept loaded, and how many it would have wanted. */
-    public record PartyResult(UUID partyId, List<Candidate> chunks, int wanted, boolean cappedByServer) {
+    /** A claimed chunk of an active party. */
+    public record Candidate(UUID partyId, String dimension, int chunkX, int chunkZ) {
     }
 
     private ChunkLoadPlan() {
     }
 
-    public static String chunkId(String dimension, int chunkX, int chunkZ) {
-        return dimension + "|" + chunkX + "|" + chunkZ;
+    /**
+     * When the party was last seen: {@code now} if a member is online, otherwise the latest of what was stored for the
+     * party and the members' own last-seen times. {@code 0} when nothing is known.
+     */
+    public static long lastSeen(Collection<UUID> members, Predicate<UUID> online, ToLongFunction<UUID> memberLastSeen, long stored, long now) {
+        long latest = Math.max(0, stored);
+        for (UUID member : members) {
+            if (member == null) continue;
+            if (online.test(member)) return now;
+            latest = Math.max(latest, memberLastSeen.applyAsLong(member));
+        }
+        return latest;
     }
 
-    /**
-     * @param partiesInOrder parties with chunk loading on, in the order they were switched on
-     * @param candidates     every claimed chunk of those parties
-     * @param selections     the chunks each party chose; a party without a choice keeps its oldest claims
-     */
-    public static Map<UUID, PartyResult> plan(List<UUID> partiesInOrder, List<Candidate> candidates, Map<UUID, Set<String>> selections,
-                                              int maxPerParty, int maxTotal) {
-        Map<UUID, List<Candidate>> byParty = new LinkedHashMap<>();
-        for (UUID party : partiesInOrder) byParty.put(party, new ArrayList<>());
-        for (Candidate candidate : candidates) {
-            var list = byParty.get(candidate.partyId());
-            if (list != null) list.add(candidate);
-        }
-        Comparator<Candidate> oldestFirst = Comparator
-                .comparing((Candidate c) -> c.claimedDate() == null ? "" : c.claimedDate())
-                .thenComparing(Candidate::dimension)
-                .thenComparingInt(Candidate::chunkX)
-                .thenComparingInt(Candidate::chunkZ);
+    /** Whether a party last seen at {@code lastSeen} still keeps its claims loaded. */
+    public static boolean isActive(long lastSeen, long now, long windowMillis) {
+        return lastSeen > 0 && now - lastSeen < windowMillis;
+    }
 
-        Map<UUID, PartyResult> result = new LinkedHashMap<>();
-        int left = Math.max(0, maxTotal);
-        for (var entry : byParty.entrySet()) {
-            List<Candidate> list = entry.getValue();
-            Set<String> chosen = selections.getOrDefault(entry.getKey(), Set.of());
-            if (!chosen.isEmpty()) {
-                Set<String> chosenIds = new LinkedHashSet<>(chosen);
-                list.removeIf(c -> !chosenIds.contains(c.id()));
-            }
-            list.sort(oldestFirst);
-            int wanted = Math.min(list.size(), Math.max(0, maxPerParty));
-            int granted = Math.min(wanted, left);
-            left -= granted;
-            result.put(entry.getKey(), new PartyResult(entry.getKey(), List.copyOf(list.subList(0, granted)), wanted, granted < wanted));
-        }
-        return result;
+    /** Kept chunks per dimension, sorted by name, for log lines. */
+    public static Map<String, Integer> countByDimension(Collection<Candidate> chunks) {
+        Map<String, Integer> counts = new TreeMap<>();
+        for (Candidate c : chunks) counts.merge(c.dimension(), 1, Integer::sum);
+        return counts;
     }
 }

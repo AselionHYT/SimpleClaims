@@ -31,37 +31,45 @@ final class ChunkKeepAlive {
         var chunks = world.getChunkStore();
         var store = chunks.getStore();
         var nonTicking = ChunkStore.REGISTRY.getNonTickingComponentType();
+        RuntimeException failure = null;
         for (long key : keys) {
-            var ref = chunks.getChunkReference(key);
-            var chunk = ref == null || !ref.isValid() ? null : store.getComponent(ref, WorldChunk.getComponentType());
-            if (chunk != null) {
-                chunk.resetActiveTimer();
-                chunk.resetKeepAlive();
-            }
-            if (chunk == null || store.getArchetype(ref).contains(nonTicking)) {
-                // Not loaded (e.g. after a restart) or already asleep: load it and make it tick again.
-                chunks.getChunkReferenceAsync(key, GetChunkFlags.SET_TICKING);
-                continue;
-            }
-            var column = store.getComponent(ref, ChunkColumn.getComponentType());
-            boolean asleep = column == null;
-            for (int y = 0; !asleep && y < ChunkUtil.HEIGHT_SECTIONS; y++) {
-                var sectionRef = column.getSection(y);
-                var section = sectionRef == null || !sectionRef.isValid() ? null : store.getComponent(sectionRef, ChunkSection.getComponentType());
-                if (section == null || store.getArchetype(sectionRef).contains(nonTicking)) {
-                    asleep = true;
+            try {
+                var ref = chunks.getChunkReference(key);
+                var chunk = ref == null || !ref.isValid() ? null : store.getComponent(ref, WorldChunk.getComponentType());
+                if (chunk != null) {
+                    chunk.resetActiveTimer();
+                    chunk.resetKeepAlive();
+                }
+                if (chunk == null || store.getArchetype(ref).contains(nonTicking)) {
+                    // Not loaded (e.g. after a restart) or already asleep: load it and make it tick again.
+                    chunks.getChunkReferenceAsync(key, GetChunkFlags.SET_TICKING);
+                    continue;
+                }
+                var column = store.getComponent(ref, ChunkColumn.getComponentType());
+                boolean asleep = column == null;
+                for (int y = 0; !asleep && y < ChunkUtil.HEIGHT_SECTIONS; y++) {
+                    var sectionRef = column.getSection(y);
+                    var section = sectionRef == null || !sectionRef.isValid() ? null : store.getComponent(sectionRef, ChunkSection.getComponentType());
+                    if (section == null || store.getArchetype(sectionRef).contains(nonTicking)) {
+                        asleep = true;
+                    } else {
+                        section.resetActiveTimer();
+                        section.resetKeepAlive();
+                    }
+                }
+                if (asleep) {
+                    for (int y = 0; y < ChunkUtil.HEIGHT_SECTIONS; y++) {
+                        chunks.getChunkSectionReferenceAsync(ChunkUtil.xOfChunkIndex(key), y, ChunkUtil.zOfChunkIndex(key), GetChunkFlags.SET_TICKING);
+                    }
                 } else {
-                    section.resetActiveTimer();
-                    section.resetKeepAlive();
+                    ticking.add(key);
                 }
-            }
-            if (asleep) {
-                for (int y = 0; y < ChunkUtil.HEIGHT_SECTIONS; y++) {
-                    chunks.getChunkSectionReferenceAsync(ChunkUtil.xOfChunkIndex(key), y, ChunkUtil.zOfChunkIndex(key), GetChunkFlags.SET_TICKING);
-                }
-            } else {
-                ticking.add(key);
+            } catch (RuntimeException e) {
+                // One bad column (e.g. an out-of-range section lookup) must not stop the others from being kept up;
+                // the first failure is rethrown after the loop so the caller logs it.
+                if (failure == null) failure = e;
             }
         }
+        if (failure != null) throw failure;
     }
 }

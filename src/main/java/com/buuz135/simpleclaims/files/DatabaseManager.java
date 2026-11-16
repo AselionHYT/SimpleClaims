@@ -654,101 +654,60 @@ public class DatabaseManager {
         return reservedChunks;
     }
 
-    // Aselion fork: chunk loading. The tables are only created once chunk loading is enabled in the config,
-    // so a server with it off never writes them. No foreign key to parties on purpose: saveParty() uses
-    // REPLACE INTO parties, which deletes and re-inserts the row and would cascade-delete these rows each time.
-    // Rows of disbanded parties are removed by the chunk load manager.
+    // Aselion fork: chunk loading. The table is only created once chunk loading is enabled in the config, so a server
+    // with it off never writes it. No foreign key to parties on purpose: saveParty() uses REPLACE INTO parties, which
+    // deletes and re-inserts the row and would cascade-delete these rows each time. Rows of disbanded parties are
+    // removed by the chunk load manager. The older tables chunk_loading_parties and chunk_loading_selection (admin
+    // switch and chunk choice) are no longer read or written; they are left in place.
 
     public void ensureChunkLoadingTables() {
         if (connection == null) return;
         try (Statement statement = connection.createStatement()) {
-            statement.execute("CREATE TABLE IF NOT EXISTS chunk_loading_parties (" +
+            statement.execute("CREATE TABLE IF NOT EXISTS chunk_loading_activity (" +
                     "party_id TEXT PRIMARY KEY," +
-                    "enabled_by_name TEXT," +
-                    "enabled_date TEXT" +
-                    ")");
-            statement.execute("CREATE TABLE IF NOT EXISTS chunk_loading_selection (" +
-                    "party_id TEXT," +
-                    "dimension TEXT," +
-                    "chunkX INTEGER," +
-                    "chunkZ INTEGER," +
-                    "PRIMARY KEY (party_id, dimension, chunkX, chunkZ)" +
+                    "last_seen INTEGER NOT NULL" +
                     ")");
         } catch (SQLException e) {
-            logger.at(Level.SEVERE).log("Could not create the chunk loading tables: " + e.getMessage());
+            logger.at(Level.SEVERE).log("Could not create the chunk loading table: " + e.getMessage());
         }
     }
 
-    public Map<UUID, com.buuz135.simpleclaims.chunkload.ChunkLoadStore.Enabled> loadChunkLoadingParties() {
-        Map<UUID, com.buuz135.simpleclaims.chunkload.ChunkLoadStore.Enabled> result = new HashMap<>();
+    public Map<UUID, Long> loadChunkLoadingLastSeen() {
+        Map<UUID, Long> result = new HashMap<>();
         if (connection == null) return result;
         try (Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery("SELECT * FROM chunk_loading_parties")) {
+             ResultSet rs = statement.executeQuery("SELECT party_id, last_seen FROM chunk_loading_activity")) {
             while (rs.next()) {
-                result.put(UUID.fromString(rs.getString("party_id")),
-                        new com.buuz135.simpleclaims.chunkload.ChunkLoadStore.Enabled(rs.getString("enabled_by_name"), rs.getString("enabled_date")));
+                try {
+                    result.put(UUID.fromString(rs.getString("party_id")), rs.getLong("last_seen"));
+                } catch (IllegalArgumentException e) {
+                    logger.at(Level.WARNING).log("Skipping chunk loading row with a bad party id: " + rs.getString("party_id"));
+                }
             }
         } catch (SQLException e) {
-            logger.at(Level.SEVERE).log("Could not load chunk loading parties: " + e.getMessage());
+            logger.at(Level.SEVERE).log("Could not load chunk loading activity: " + e.getMessage());
         }
         return result;
     }
 
-    public Map<UUID, Set<String>> loadChunkLoadingSelections() {
-        Map<UUID, Set<String>> result = new HashMap<>();
-        if (connection == null) return result;
-        try (Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery("SELECT * FROM chunk_loading_selection")) {
-            while (rs.next()) {
-                result.computeIfAbsent(UUID.fromString(rs.getString("party_id")), k -> new HashSet<>())
-                        .add(com.buuz135.simpleclaims.chunkload.ChunkLoadPlan.chunkId(rs.getString("dimension"), rs.getInt("chunkX"), rs.getInt("chunkZ")));
-            }
-        } catch (SQLException e) {
-            logger.at(Level.SEVERE).log("Could not load chunk loading selections: " + e.getMessage());
-        }
-        return result;
-    }
-
-    public void setChunkLoadingParty(UUID partyId, boolean enabled, String byName, String date) {
+    public void saveChunkLoadingLastSeen(UUID partyId, long lastSeen) {
         if (connection == null) return;
-        String sql = enabled
-                ? "REPLACE INTO chunk_loading_parties (party_id, enabled_by_name, enabled_date) VALUES (?, ?, ?)"
-                : "DELETE FROM chunk_loading_parties WHERE party_id = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (PreparedStatement ps = connection.prepareStatement("REPLACE INTO chunk_loading_activity (party_id, last_seen) VALUES (?, ?)")) {
             ps.setString(1, partyId.toString());
-            if (enabled) {
-                ps.setString(2, byName);
-                ps.setString(3, date);
-            }
+            ps.setLong(2, lastSeen);
             ps.executeUpdate();
         } catch (SQLException e) {
-            logger.at(Level.SEVERE).log("Could not save chunk loading for party " + partyId + ": " + e.getMessage());
+            logger.at(Level.SEVERE).log("Could not save chunk loading activity of party " + partyId + ": " + e.getMessage());
         }
     }
 
-    public void setChunkLoadingSelected(UUID partyId, String dimension, int chunkX, int chunkZ, boolean selected) {
+    public void deleteChunkLoadingLastSeen(UUID partyId) {
         if (connection == null) return;
-        String sql = selected
-                ? "REPLACE INTO chunk_loading_selection (party_id, dimension, chunkX, chunkZ) VALUES (?, ?, ?, ?)"
-                : "DELETE FROM chunk_loading_selection WHERE party_id = ? AND dimension = ? AND chunkX = ? AND chunkZ = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, partyId.toString());
-            ps.setString(2, dimension);
-            ps.setInt(3, chunkX);
-            ps.setInt(4, chunkZ);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            logger.at(Level.SEVERE).log("Could not save the chunk loading selection of party " + partyId + ": " + e.getMessage());
-        }
-    }
-
-    public void clearChunkLoadingSelection(UUID partyId) {
-        if (connection == null) return;
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM chunk_loading_selection WHERE party_id = ?")) {
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM chunk_loading_activity WHERE party_id = ?")) {
             ps.setString(1, partyId.toString());
             ps.executeUpdate();
         } catch (SQLException e) {
-            logger.at(Level.SEVERE).log("Could not clear the chunk loading selection of party " + partyId + ": " + e.getMessage());
+            logger.at(Level.SEVERE).log("Could not delete chunk loading activity of party " + partyId + ": " + e.getMessage());
         }
     }
 }

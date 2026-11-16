@@ -8,6 +8,7 @@ import com.buuz135.simpleclaims.claim.party.PartyOverrides;
 import com.buuz135.simpleclaims.commands.CommandMessages;
 import com.buuz135.simpleclaims.files.*;
 import com.buuz135.simpleclaims.util.FileUtils;
+import com.buuz135.simpleclaims.chunkload.ChunkLoadManager;
 import com.buuz135.simpleclaims.claim.chunk.ChunkInfo;
 import com.buuz135.simpleclaims.claim.chunk.ReservedChunk;
 import com.buuz135.simpleclaims.claim.party.PartyInfo;
@@ -268,6 +269,7 @@ public class ClaimManager {
         }
         
         this.runAsync(() -> databaseManager.saveClaim(dimension, chunkInfo));
+        ChunkLoadManager.claimsChanged(); // Aselion fork: keep the new claim loaded if the party is active
         
         // Calculate and reserve perimeter chunks if enabled
         if (Main.CONFIG.get().isEnablePerimeterReservation()) {
@@ -323,6 +325,7 @@ public class ClaimManager {
                 partyClaimCounts.computeIfPresent(partyId, (k, v) -> v > 1 ? v - 1 : null);
                 dimensionClaimCounts.computeIfPresent(WorldClaimBudget.key(partyId, dimension), (k, v) -> v > 1 ? v - 1 : null);
                 this.runAsync(() -> databaseManager.deleteClaim(dimension, chunkX, chunkZ));
+                ChunkLoadManager.claimsChanged(); // Aselion fork: release the unclaimed chunk
                 
                 // Recalculate reserved perimeter after unclaiming if enabled
                 if (Main.CONFIG.get().isEnablePerimeterReservation()) {
