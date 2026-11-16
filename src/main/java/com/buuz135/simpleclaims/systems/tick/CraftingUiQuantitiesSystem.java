@@ -1,5 +1,6 @@
 package com.buuz135.simpleclaims.systems.tick;
 
+import com.buuz135.simpleclaims.util.WorldBlocks;
 import com.buuz135.simpleclaims.util.BenchChestCache;
 import com.buuz135.simpleclaims.util.WindowExtraResourcesState;
 import com.buuz135.simpleclaims.util.WindowReflection;
@@ -77,7 +78,7 @@ public class CraftingUiQuantitiesSystem extends EntityTickingSystem<EntityStore>
             int by = scw.getY();
             int bz = scw.getZ();
 
-            var block = world.getBlockType(bx, by, bz);
+            var block = WorldBlocks.blockType(world, bx, by, bz);
             if (block == null) continue;
             var bench = block.getBench();
             if (bench == null) continue;

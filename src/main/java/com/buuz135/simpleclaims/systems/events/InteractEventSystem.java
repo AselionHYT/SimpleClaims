@@ -1,5 +1,7 @@
 package com.buuz135.simpleclaims.systems.events;
 
+import com.hypixel.hytale.server.core.modules.block.BlockModule;
+import com.buuz135.simpleclaims.util.WorldBlocks;
 import com.buuz135.simpleclaims.Main;
 import com.buuz135.simpleclaims.claim.ClaimManager;
 import com.buuz135.simpleclaims.claim.party.PartyInfo;
@@ -103,13 +105,13 @@ public class InteractEventSystem extends EntityEventSystem<EntityStore, UseBlock
     private static ExtraResources buildExtraResourcesForBench(World world, PlayerRef playerRef, int bx, int by, int bz) {
         var chests = BenchChestCache.getAllowedChests(world, playerRef, bx, by, bz);
 
-        var holder = world.getBlockComponentHolder(bx, by, bz);
-        if (holder == null) return null;
-        var block = world.getBlockType(bx, by, bz);
+        var blockRef = BlockModule.getBlockEntity(world, bx, by, bz);
+        if (blockRef == null) return null;
+        var block = WorldBlocks.blockType(world, bx, by, bz);
         if (block == null) return null;
         var bench = block.getBench();
         if (bench == null) return null;
-        var benchBlock = holder.getComponent(BenchBlock.getComponentType());
+        var benchBlock = blockRef.getStore().getComponent(blockRef, BenchBlock.getComponentType());
         if (benchBlock == null) return null;
 
         ItemQuantity[] counts = CraftingUiQuantitiesSystem.computeCounts(bench, benchBlock.getTierLevel(), chests);

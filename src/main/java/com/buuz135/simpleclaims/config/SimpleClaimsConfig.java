@@ -1,5 +1,6 @@
 package com.buuz135.simpleclaims.config;
 
+import java.util.Arrays;
 
 public class SimpleClaimsConfig {
 
@@ -41,6 +42,9 @@ public class SimpleClaimsConfig {
 
     private String[] ClaimCommandAliases = new String[]{"sc", "sc-chunks", "scc", "chunk", "chunks", "claim", "claims"};
     private String[] WorldNameBlacklistForClaiming = new String[0];
+    // Aselion fork: worlds with a fixed claim budget per party, e.g. {"farm": 4}. Claims there do not count against
+    // the normal budget and the budget does not grow with play time (see WorldClaimBudget). Empty = one budget.
+    private java.util.Map<String, Integer> WorldClaimLimits = new java.util.LinkedHashMap<>();
     private String TitleTopClaimTitleText = "Simple Claims";
     private String WildernessName = "Wilderness";
     private String[] FullWorldProtection = new String[0];
@@ -59,6 +63,51 @@ public class SimpleClaimsConfig {
 
     private String[] TamedEntityRoleIdentifiers = new String[]{"Tamed_"};
     private String[] BlocksThatIgnoreInteractRestrictions = new String[]{"gravestone"};
+
+    // Aselion fork: keeps the claimed chunks of active parties ticking while nobody is near (see ChunkLoadManager).
+    // Off by default; when off the feature is inert: nothing is scheduled and nothing is written to the database.
+    private ChunkLoadingConfig ChunkLoading = new ChunkLoadingConfig();
+
+    public static class ChunkLoadingConfig {
+        private boolean Enabled = false;
+        private int ActiveHours = 48; // a party's claims stay loaded while a member was online within this many hours
+        private int WarnAboveLoadedChunks = 500; // logs a WARN while more claimed chunks than this are kept loaded
+        private String[] ExcludedWorlds = new String[0]; // claims in these worlds are never kept loaded
+
+        public ChunkLoadingConfig() {
+        }
+
+        public ChunkLoadingConfig(boolean enabled, int activeHours, int warnAboveLoadedChunks, String... excludedWorlds) {
+            this.Enabled = enabled;
+            this.ActiveHours = activeHours;
+            this.WarnAboveLoadedChunks = warnAboveLoadedChunks;
+            this.ExcludedWorlds = excludedWorlds;
+        }
+
+        public boolean isEnabled() {
+            return Enabled;
+        }
+
+        public int getActiveHours() {
+            return ActiveHours;
+        }
+
+        public long getActiveMillis() {
+            return Math.max(0, ActiveHours) * 3_600_000L;
+        }
+
+        public int getWarnAboveLoadedChunks() {
+            return WarnAboveLoadedChunks;
+        }
+
+        public String[] getExcludedWorlds() {
+            return ExcludedWorlds == null ? new String[0] : ExcludedWorlds;
+        }
+
+        public boolean isExcludedWorld(String dimension) {
+            return dimension != null && Arrays.asList(getExcludedWorlds()).contains(dimension);
+        }
+    }
 
     public SimpleClaimsConfig() {
 
@@ -118,6 +167,10 @@ public class SimpleClaimsConfig {
 
     public String[] getClaimCommandAliases() {
         return ClaimCommandAliases;
+    }
+
+    public java.util.Map<String, Integer> getWorldClaimLimits() {
+        return WorldClaimLimits == null ? java.util.Map.of() : WorldClaimLimits;
     }
 
     public String[] getWorldNameBlacklistForClaiming() {
@@ -270,5 +323,9 @@ public class SimpleClaimsConfig {
 
     public float getClaimUIMapResolutionScale() {
         return ClaimUIMapResolutionScale;
+    }
+
+    public ChunkLoadingConfig getChunkLoading() {
+        return ChunkLoading == null ? new ChunkLoadingConfig() : ChunkLoading;
     }
 }

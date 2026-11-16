@@ -1,6 +1,8 @@
 package com.buuz135.simpleclaims;
 
 import com.buuz135.simpleclaims.chat.PlayerChatListener;
+import com.buuz135.simpleclaims.chunkload.ChunkLoadManager;
+import com.buuz135.simpleclaims.chunkload.DatabaseChunkLoadStore;
 import com.buuz135.simpleclaims.claim.ClaimManager;
 import com.buuz135.simpleclaims.commands.SimpleClaimProtectCommand;
 import com.buuz135.simpleclaims.commands.SimpleClaimsPartyCommand;
@@ -13,6 +15,7 @@ import com.buuz135.simpleclaims.systems.tick.*;
 import com.buuz135.simpleclaims.util.PartyInactivityThread;
 import com.buuz135.simpleclaims.util.WindowExtraResourcesState;
 import com.buuz135.simpleclaims.util.WindowPacketAdapters;
+import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.event.events.player.AddPlayerToWorldEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent;
@@ -29,6 +32,7 @@ import dev.unnm3d.codeclib.config.CodecFactory;
 import io.netty.channel.Channel;
 import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 
@@ -91,6 +95,7 @@ public class Main extends JavaPlugin {
             var player = event.getHolder().getComponent(Player.getComponentType());
             var playerRef = event.getHolder().getComponent(PlayerRef.getComponentType());
             ClaimManager.getInstance().setPlayerName(playerRef.getUuid(), playerRef.getUsername(), System.currentTimeMillis());
+            ChunkLoadManager.playerSeen(playerRef.getUuid()); // Aselion fork: party last seen now
 
             var connection = playerRef.getPacketHandler().getChannel();
             WindowExtraResourcesState.getOrCreateMap(connection);
@@ -98,6 +103,7 @@ public class Main extends JavaPlugin {
 
         this.getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, (event) -> {
             ClaimManager.getInstance().setPlayerName(event.getPlayerRef().getUuid(), event.getPlayerRef().getUsername(), System.currentTimeMillis());
+            ChunkLoadManager.playerSeen(event.getPlayerRef().getUuid()); // Aselion fork: party last seen now
 
             var connection = event.getPlayerRef().getPacketHandler().getChannel();
             Channel ch = WindowExtraResourcesState.getNettyChannel(connection);
@@ -120,6 +126,24 @@ public class Main extends JavaPlugin {
 
         partyInactivityTickingSystem = new PartyInactivityThread();
         partyInactivityTickingSystem.start();
+
+        // Aselion fork: claim chunk loading for active parties, inert unless ChunkLoading.Enabled is set (logs "chunk loading: off|on").
+        ChunkLoadManager.start(CONFIG.get().getChunkLoading(), new DatabaseChunkLoadStore(ClaimManager.getInstance()),
+                (task, periodMillis) -> {
+                    var future = HytaleServer.SCHEDULED_EXECUTOR.scheduleAtFixedRate(task, periodMillis, periodMillis, TimeUnit.MILLISECONDS);
+                    return () -> future.cancel(false);
+                },
+                new ChunkLoadManager.Log() {
+                    @Override
+                    public void info(String line) {
+                        getLogger().at(Level.INFO).log(line);
+                    }
+
+                    @Override
+                    public void warn(String line) {
+                        getLogger().at(Level.WARNING).log(line);
+                    }
+                });
     }
 
     @Override
@@ -130,6 +154,7 @@ public class Main extends JavaPlugin {
     @Override
     protected void shutdown() {
         super.shutdown();
+        ChunkLoadManager.stop();
         WindowPacketAdapters.uninstall();
     }
 

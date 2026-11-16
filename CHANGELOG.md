@@ -1,3 +1,47 @@
+# 1.0.39-aselion.6-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Claim chunk loading by activity (ASL-573): every claimed chunk of a party stays loaded while at least one member was
+  online within `ChunkLoading.ActiveHours` (default 48). No admin switch, no chunk choice, no per-party or server-wide
+  cap; the claim limits per world are the budget. `ChunkLoading.WarnAboveLoadedChunks` (default 500) logs a WARN with
+  the counts when more chunks are kept; nothing is cut off. Last-seen per party is stored in the new table
+  `chunk_loading_activity`.
+* Removed: `/sc chunkload on|off|select|select-clear` and the config keys `MaxChunksPerParty`, `MaxChunksTotal`,
+  `RequiresAdminApproval` (ignored if still present). `list` and `status` stay.
+* Every task chunk loading hands to a world thread now catches and logs what it throws, so it can never unload a world.
+
+# 1.0.39-aselion.5-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* `ClaimManager.claimChunkAs(dimension, chunkX, chunkZ, party, actorId, actorName)` (Aselion fork): claims a chunk for
+  a party without a player at hand, so another plugin can make admin claims (Rewired's farm spawn claim, ASL-752).
+  `claimChunkBy` now delegates to it; behaviour unchanged.
+* Admin claims ignore every claim budget (Aselion fork): `/scp admin-claim` and the admin chunk map no longer stop at
+  `WorldClaimLimits` (e.g. 4 in `farm`) or the party's normal budget. Player claims keep their limits.
+
+# 1.0.39-aselion.4-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Per-world claim budgets (Aselion fork): `WorldClaimLimits`, e.g. `{"farm": 4}`, gives a listed world a fixed budget
+  per party that does not count against the normal budget and does not grow with play time. Claims are counted per
+  party and world in memory; the claim map shows the budget of its world. Empty by default (one budget, as before).
+* `ChunkLoading.ExcludedWorlds`: claims in these worlds are never kept loaded. See CONFIG.md.
+
+# 1.0.39-aselion.3-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Claim chunk loading (Aselion fork, off by default): `ChunkLoading.Enabled` keeps the claimed chunks of parties an
+  admin switched it on for ticking while nobody is near (`/sc chunkload on|off <party>`, `list`, `status`, `select`,
+  `select-clear`). Limits per party and per server; state in two new database tables, created only when enabled.
+  With the default config nothing is scheduled, registered in the database or written. See CONFIG.md.
+
+# 1.0.39-aselion.2-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Fix: claims of a world could vanish from memory when a world thread looked up a new dimension (unsynchronized
+  `HashMap` resize in `ClaimManager.getChunk`). The dimension map is now copy-on-write and `getChunk` only reads (#4).
+
+# 1.0.39-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Ported to Hytale `0.7.0-pre.5.1`: block lookups (interact protection, bench chest search, crafting quantities) and
+  the claim world map builder use the section-based block access that replaced the `World`/`WorldChunk`/`BlockChunk`
+  getters. `ServerVersion` is `>=0.7.0-pre.5 <0.8.0`; this build does not run on 0.6.
+
 # 1.0.39
 
 * Ported to version 0.6.0
