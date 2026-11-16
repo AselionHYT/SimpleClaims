@@ -4,7 +4,6 @@ import com.buuz135.simpleclaims.claim.ClaimManager;
 import com.buuz135.simpleclaims.files.DatabaseManager;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /** The chunk loading state in the SimpleClaims database. Writes go through the claim manager's database pool. */
@@ -24,27 +23,17 @@ public final class DatabaseChunkLoadStore implements ChunkLoadStore {
     }
 
     @Override
-    public Map<UUID, Enabled> loadEnabledParties() {
-        return database.loadChunkLoadingParties();
+    public Map<UUID, Long> loadLastSeen() {
+        return database.loadChunkLoadingLastSeen();
     }
 
     @Override
-    public Map<UUID, Set<String>> loadSelections() {
-        return database.loadChunkLoadingSelections();
+    public void saveLastSeen(UUID partyId, long lastSeen) {
+        claims.runAsync(() -> database.saveChunkLoadingLastSeen(partyId, lastSeen));
     }
 
     @Override
-    public void setEnabled(UUID partyId, boolean enabled, String byName, String date) {
-        claims.runAsync(() -> database.setChunkLoadingParty(partyId, enabled, byName, date));
-    }
-
-    @Override
-    public void setSelected(UUID partyId, String dimension, int chunkX, int chunkZ, boolean selected) {
-        claims.runAsync(() -> database.setChunkLoadingSelected(partyId, dimension, chunkX, chunkZ, selected));
-    }
-
-    @Override
-    public void clearSelection(UUID partyId) {
-        claims.runAsync(() -> database.clearChunkLoadingSelection(partyId));
+    public void forget(UUID partyId) {
+        claims.runAsync(() -> database.deleteChunkLoadingLastSeen(partyId));
     }
 }

@@ -2,7 +2,6 @@ package com.buuz135.simpleclaims.chunkload;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,50 +11,46 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ChunkLoadPlanTest {
 
-    private static List<ChunkLoadPlan.Candidate> claims(UUID party, int count) {
-        List<ChunkLoadPlan.Candidate> list = new ArrayList<>();
-        for (int i = 0; i < count; i++) list.add(new ChunkLoadPlan.Candidate(party, "default", i, 0, "2026-10-0" + (9 - i % 9)));
-        return list;
+    private static final long HOUR = 3_600_000L;
+    private static final long NOW = 1_000 * HOUR;
+    private final UUID owner = UUID.randomUUID();
+    private final UUID member = UUID.randomUUID();
+
+    @Test
+    void anOnlineMemberMeansSeenNow() {
+        long seen = ChunkLoadPlan.lastSeen(List.of(owner, member), Set.of(member)::contains, p -> NOW - 100 * HOUR, 0, NOW);
+        assertEquals(NOW, seen);
     }
 
     @Test
-    void eachPartyGetsAtMostItsLimitOldestClaimsFirst() {
-        var a = UUID.randomUUID();
-        var plan = ChunkLoadPlan.plan(List.of(a), claims(a, 12), Map.of(), 9, 100);
-        var result = plan.get(a);
-        assertEquals(9, result.chunks().size());
-        assertFalse(result.cappedByServer());
-        // oldest date first: chunk 8 has date ...-01
-        assertEquals(8, result.chunks().get(0).chunkX());
+    void offlineTakesTheLatestOfStoredAndMembers() {
+        Map<UUID, Long> names = Map.of(owner, NOW - 30 * HOUR, member, NOW - 10 * HOUR);
+        assertEquals(NOW - 10 * HOUR, ChunkLoadPlan.lastSeen(List.of(owner, member), p -> false, names::get, NOW - 20 * HOUR, NOW));
+        assertEquals(NOW - 5 * HOUR, ChunkLoadPlan.lastSeen(List.of(owner, member), p -> false, names::get, NOW - 5 * HOUR, NOW));
     }
 
     @Test
-    void serverCapServesPartiesInTheOrderTheyWereSwitchedOn() {
-        var first = UUID.randomUUID();
-        var second = UUID.randomUUID();
-        List<ChunkLoadPlan.Candidate> all = new ArrayList<>(claims(first, 5));
-        all.addAll(claims(second, 5));
-        var plan = ChunkLoadPlan.plan(List.of(first, second), all, Map.of(), 9, 7);
-        assertEquals(5, plan.get(first).chunks().size());
-        assertEquals(2, plan.get(second).chunks().size());
-        assertTrue(plan.get(second).cappedByServer());
-        assertEquals(5, plan.get(second).wanted());
+    void nothingKnownIsZeroAndInactive() {
+        long seen = ChunkLoadPlan.lastSeen(List.of(owner), p -> false, p -> 0, 0, NOW);
+        assertEquals(0, seen);
+        assertFalse(ChunkLoadPlan.isActive(seen, NOW, 48 * HOUR));
     }
 
     @Test
-    void chosenChunksReplaceTheDefault() {
-        var a = UUID.randomUUID();
-        var plan = ChunkLoadPlan.plan(List.of(a), claims(a, 5), Map.of(a, Set.of(ChunkLoadPlan.chunkId("default", 3, 0), ChunkLoadPlan.chunkId("default", 99, 0))), 9, 100);
-        assertEquals(1, plan.get(a).chunks().size());
-        assertEquals(3, plan.get(a).chunks().get(0).chunkX());
+    void activeStrictlyWithinTheWindow() {
+        assertTrue(ChunkLoadPlan.isActive(NOW, NOW, 48 * HOUR));
+        assertTrue(ChunkLoadPlan.isActive(NOW - 48 * HOUR + 1, NOW, 48 * HOUR));
+        assertFalse(ChunkLoadPlan.isActive(NOW - 48 * HOUR, NOW, 48 * HOUR));
     }
 
     @Test
-    void claimsOfOtherPartiesAreIgnored() {
-        var a = UUID.randomUUID();
-        var stranger = UUID.randomUUID();
-        var plan = ChunkLoadPlan.plan(List.of(a), claims(stranger, 3), Map.of(), 9, 100);
-        assertEquals(0, plan.get(a).chunks().size());
-        assertFalse(plan.containsKey(stranger));
+    void countsPerDimensionAreSorted() {
+        var p = UUID.randomUUID();
+        var counts = ChunkLoadPlan.countByDimension(List.of(
+                new ChunkLoadPlan.Candidate(p, "farm", 0, 0),
+                new ChunkLoadPlan.Candidate(p, "default", 0, 0),
+                new ChunkLoadPlan.Candidate(p, "default", 1, 0)));
+        assertEquals(List.of("default", "farm"), List.copyOf(counts.keySet()));
+        assertEquals(2, counts.get("default"));
     }
 }

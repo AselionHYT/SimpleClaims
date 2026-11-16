@@ -1,30 +1,22 @@
 package com.buuz135.simpleclaims.chunkload;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
- * Where the chunk loading state lives between restarts and rolling handoffs (the SimpleClaims database).
+ * Where the last-seen time of each party lives between restarts and rolling handoffs (the SimpleClaims database).
  * Only touched while chunk loading is enabled in the config.
  */
 public interface ChunkLoadStore {
 
-    /** Creates the tables if they are missing. */
+    /** Creates the table if it is missing. */
     void ensureSchema();
 
-    /** The parties chunk loading is switched on for, with who switched it on and when. */
-    Map<UUID, Enabled> loadEnabledParties();
+    /** Epoch millis each party was last seen with a member online. */
+    Map<UUID, Long> loadLastSeen();
 
-    /** The chunks each party chose to keep loaded, as {@link ChunkLoadPlan#chunkId} strings. */
-    Map<UUID, Set<String>> loadSelections();
+    void saveLastSeen(UUID partyId, long lastSeen);
 
-    void setEnabled(UUID partyId, boolean enabled, String byName, String date);
-
-    void setSelected(UUID partyId, String dimension, int chunkX, int chunkZ, boolean selected);
-
-    void clearSelection(UUID partyId);
-
-    record Enabled(String byName, String date) {
-    }
+    /** Removes the row of a disbanded party. */
+    void forget(UUID partyId);
 }

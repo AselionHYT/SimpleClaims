@@ -1,3 +1,14 @@
+# 1.0.39-aselion.6-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
+
+* Claim chunk loading by activity (ASL-573): every claimed chunk of a party stays loaded while at least one member was
+  online within `ChunkLoading.ActiveHours` (default 48). No admin switch, no chunk choice, no per-party or server-wide
+  cap; the claim limits per world are the budget. `ChunkLoading.WarnAboveLoadedChunks` (default 500) logs a WARN with
+  the counts when more chunks are kept; nothing is cut off. Last-seen per party is stored in the new table
+  `chunk_loading_activity`.
+* Removed: `/sc chunkload on|off|select|select-clear` and the config keys `MaxChunksPerParty`, `MaxChunksTotal`,
+  `RequiresAdminApproval` (ignored if still present). `list` and `status` stay.
+* Every task chunk loading hands to a world thread now catches and logs what it throws, so it can never unload a world.
+
 # 1.0.39-aselion.5-pre0.7.1 (Aselion fork, Hytale 0.7 pre-release line)
 
 * `ClaimManager.claimChunkAs(dimension, chunkX, chunkZ, party, actorId, actorName)` (Aselion fork): claims a chunk for

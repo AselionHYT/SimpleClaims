@@ -124,41 +124,49 @@ Settings related to the user interface and visual feedback.
 
 ## Chunk Loading (Aselion fork)
 
-Keeps claimed chunks ticking while no player is near, so machines in a claim keep running while the owner is offline.
+Keeps claimed chunks ticking while no player is near, so machines in a claim keep running while the owners are offline.
+Every claimed chunk of a party stays loaded as long as at least one party member was online within `ActiveHours`.
+There is no per-party or server-wide budget and nothing to switch on per party: the claim limits per world
+(`WorldClaimLimits`, the normal party budget) are the budget.
+
 Off by default. When off it is inert: no keep-alive loop runs, nothing is written to the database, and the
 `/sc chunkload` commands only answer that it is disabled. Startup logs `chunk loading: off` or `chunk loading: on (...)`.
 
 ```json
 "ChunkLoading": {
   "Enabled": false,
-  "MaxChunksPerParty": 9,
-  "MaxChunksTotal": 64,
-  "RequiresAdminApproval": true,
+  "ActiveHours": 48,
+  "WarnAboveLoadedChunks": 500,
   "ExcludedWorlds": []
 }
 ```
 
 - **Enabled** (Boolean, Default: `false`): Turns the feature on for this server.
-- **MaxChunksPerParty** (Integer, Default: `9`): Claimed chunks one party keeps loaded at most.
-- **MaxChunksTotal** (Integer, Default: `64`): Chunks the server keeps loaded at most over all parties. Parties are
-  served in the order chunk loading was switched on for them.
-- **RequiresAdminApproval** (Boolean, Default: `true`): If `true`, only admins (`simpleclaims.admin.chunkload`) switch
-  it on or off for a party. If `false`, a party owner may switch it for their own party too.
-- **ExcludedWorlds** (String Array, Default: `[]`): Worlds whose claims are never kept loaded, e.g. `["farm"]`. Chunks
-  chosen there with `select` are ignored.
+- **ActiveHours** (Integer, Default: `48`): A party's claims stay loaded while a member was online within this many
+  hours. A member online now keeps them loaded.
+- **WarnAboveLoadedChunks** (Integer, Default: `500`): While more claimed chunks than this are kept loaded, a WARN with
+  the counts is logged (on crossing, then at most hourly). Nothing is cut off. `-1` disables the warning.
+- **ExcludedWorlds** (String Array, Default: `[]`): Worlds whose claims are never kept loaded.
 
 Commands (under `/simpleclaims`, alias `/sc`; need `simpleclaims.claim`, `list` needs `simpleclaims.admin.chunkload`):
 
-- `/sc chunkload on <party>` / `/sc chunkload off <party>`: `<party>` is `here` (the claim you stand in), `mine`, the
-  owner's name or the party id. Works from the console with a name or id.
-- `/sc chunkload list`: kept, ticking and capped chunks per party, the keep-up cost and the world's average tick.
-- `/sc chunkload status`: your own party.
-- `/sc chunkload select`: the party owner chooses the claimed chunk they stand in (toggle, up to `MaxChunksPerParty`).
-  With chunks chosen only those load; with none chosen the party's oldest claims load. `select-clear` forgets the choice.
+- `/sc chunkload list`: kept and ticking chunks per world and per active party, the keep-up cost and the world's
+  average tick.
+- `/sc chunkload status`: your own party, and until when its claims stay loaded.
 
-How: every 500 ms the active timer of each kept chunk column and of all its sections is reset (since Hytale 0.7.0 a
-column and each 32-block section tick separately), and unloaded chunks are loaded ticking. State is in the tables
-`chunk_loading_parties` and `chunk_loading_selection` of `SimpleClaims.db`, so it survives restarts and handoffs.
+How: the last time a member of each party was online is kept in the table `chunk_loading_activity` of
+`SimpleClaims.db` (written on join and leave, and every 5 minutes while a member is online), so it survives restarts and
+handoffs; for a party without a row the members' last-seen times from the name cache count. Activity and claims are
+re-evaluated every 5 seconds and right after a join, leave, claim or unclaim. Claims in a world that is not loaded
+(not created yet, or removed by a farm reset) are skipped. Every 500 ms the active timer of each kept chunk column and
+of all its sections is reset (since Hytale 0.7.0 a column and each 32-block section tick separately), and unloaded
+chunks are loaded ticking. Chunks of a party that turned inactive are no longer kept up and unload like any other
+chunk. Each log line starts with `chunk loading:`; a line with the total and the count per world is written whenever
+it changes.
+
+Up to `1.0.39-aselion.5`, chunk loading needed an admin switch per party (`/sc chunkload on|off`), a chunk choice
+(`select`, `select-clear`) and the limits `MaxChunksPerParty`, `MaxChunksTotal`, `RequiresAdminApproval`. These are gone;
+the old keys are ignored and the old tables `chunk_loading_parties` and `chunk_loading_selection` are no longer read.
 
 ## Experimental Settings
 
